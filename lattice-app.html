@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lattice — AI Career Intelligence</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #060d18;
+    --surface: #0c1929;
+    --surface2: #112038;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e8f4ff;
+    --muted: #6b8ba8;
+    --dim: #3a5470;
+    --cyan: #0ff4c6;
+    --cyan-dim: rgba(15,244,198,0.10);
+    --cyan-mid: rgba(15,244,198,0.22);
+    --purple: #a78bfa;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --green: #34d399;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; overflow: hidden; }
+
+  .shell { display: grid; grid-template-columns: 220px 1fr; height: 100vh; }
+
+  /* SIDEBAR */
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 0; overflow-y: auto; }
+  .logo-area { padding: 0 16px 20px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .logo-mark { display: flex; align-items: center; gap: 10px; }
+  .logo-hex { width: 36px; height: 36px; background: linear-gradient(135deg, var(--cyan), #7c3aed); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: #000; flex-shrink: 0; }
+  .logo-text { font-size: 18px; font-weight: 600; letter-spacing: -0.5px; }
+  .logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 1px; }
+  .nav-section { padding: 12px 16px 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; color: var(--muted); cursor: pointer; font-size: 13px; transition: all 0.15s; border-left: 2px solid transparent; }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .nav-item.active { color: var(--cyan); border-left-color: var(--cyan); background: var(--cyan-dim); }
+  .nav-icon { font-size: 16px; width: 18px; text-align: center; }
+  .nav-badge { margin-left: auto; background: var(--cyan-dim); color: var(--cyan); font-size: 10px; padding: 2px 6px; border-radius: 99px; border: 1px solid var(--cyan-mid); }
+  .sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid var(--border); }
+  .user-pill { display: flex; align-items: center; gap: 10px; }
+  .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #7c3aed, var(--cyan)); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #000; flex-shrink: 0; }
+  .user-name { font-size: 13px; font-weight: 500; }
+  .user-plan { font-size: 11px; color: var(--muted); }
+
+  /* MAIN */
+  .main { display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+  .topbar-title { font-size: 15px; font-weight: 500; }
+  .topbar-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .topbar-right { display: flex; gap: 8px; }
+  .chip { padding: 5px 10px; border-radius: 6px; font-size: 11px; border: 1px solid var(--border2); color: var(--muted); background: var(--surface2); }
+  .chip.hi { border-color: var(--cyan-mid); color: var(--cyan); background: var(--cyan-dim); }
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* SCREENS */
+  .screen { display: none; }
+  .screen.active { display: block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* GRID */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+  /* CARDS */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 16px; }
+  .card-inner { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  .card-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); margin-bottom: 12px; }
+  .hero-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; position: relative; overflow: hidden; margin-bottom: 0; }
+  .hero-card::before { content:''; position:absolute; top:-60px; right:-60px; width:200px; height:200px; background:radial-gradient(circle, rgba(15,244,198,0.07), transparent 70%); pointer-events:none; }
+
+  .h1 { font-size: 26px; font-weight: 500; line-height: 1.2; letter-spacing: -0.5px; margin-bottom: 10px; }
+  .h2 { font-size: 18px; font-weight: 500; margin-bottom: 10px; letter-spacing: -0.3px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .accent { color: var(--cyan); }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-family: var(--font); font-weight: 500; cursor: pointer; transition: all 0.15s; border: none; line-height: 1; }
+  .btn-primary { background: var(--cyan); color: #000; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+  .btn-secondary:hover { background: rgba(255,255,255,0.07); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+  /* FORM */
+  .textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 14px; color: var(--text); font-family: var(--font); font-size: 13px; resize: vertical; outline: none; transition: border-color 0.15s; }
+  .textarea:focus { border-color: var(--cyan-mid); }
+  .textarea::placeholder { color: var(--dim); }
+
+  /* UPLOAD */
+  .upload-zone { border: 1.5px dashed var(--cyan-mid); border-radius: 14px; padding: 32px; text-align: center; background: var(--cyan-dim); cursor: pointer; transition: all 0.2s; margin-bottom: 14px; }
+  .upload-zone:hover { background: rgba(15,244,198,0.16); }
+  .upload-icon { font-size: 28px; margin-bottom: 6px; }
+
+  /* STATS */
+  .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 16px; }
+  .stat { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .stat-val { font-size: 22px; font-weight: 600; color: var(--cyan); font-family: var(--mono); }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+
+  /* ROLE CARDS */
+  .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .role-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 16px; cursor: pointer; transition: all 0.18s; position: relative; overflow: hidden; }
+  .role-card:hover { border-color: var(--cyan-mid); }
+  .role-card.top { border-color: var(--cyan-mid); }
+  .top-badge { position: absolute; top: 10px; right: 10px; font-size: 9px; letter-spacing: 0.08em; color: var(--cyan); background: var(--cyan-dim); padding: 2px 7px; border-radius: 99px; border: 1px solid var(--cyan-mid); }
+  .role-match { font-size: 26px; font-weight: 600; color: var(--cyan); font-family: var(--mono); margin-bottom: 4px; }
+  .role-title { font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+  .role-meta { font-size: 11px; color: var(--muted); }
+  .match-bar { height: 4px; border-radius: 99px; background: var(--border); margin: 8px 0; overflow: hidden; }
+  .match-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--cyan), #7c3aed); }
+
+  /* TAGS */
+  .tag { display: inline-block; padding: 3px 8px; border-radius: 99px; font-size: 11px; border: 1px solid var(--border2); color: var(--muted); background: rgba(255,255,255,0.04); margin: 2px 2px 0 0; }
+  .tag.green { color: var(--green); border-color: rgba(52,211,153,0.25); background: rgba(52,211,153,0.07); }
+  .tag.amber { color: var(--amber); border-color: rgba(251,191,36,0.25); background: rgba(251,191,36,0.07); }
+  .tag.red { color: var(--red); border-color: rgba(248,113,113,0.25); background: rgba(248,113,113,0.07); }
+
+  /* SKILL BARS */
+  .skill-row { margin-bottom: 12px; }
+  .skill-label { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px; }
+  .skill-label span:last-child { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+  .skill-bar { height: 5px; border-radius: 99px; background: var(--border); overflow: hidden; }
+  .skill-fill { height: 100%; border-radius: 99px; }
+  .sf-high { background: var(--green); }
+  .sf-mid { background: var(--amber); }
+  .sf-low { background: var(--dim); }
+
+  /* JOBS */
+  .job-item { display: flex; align-items: flex-start; justify-content: space-between; padding: 14px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; gap: 16px; }
+  .job-title { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+  .job-co { font-size: 12px; color: var(--muted); margin-bottom: 7px; }
+  .job-fit { font-size: 22px; font-weight: 600; font-family: var(--mono); color: var(--cyan); white-space: nowrap; }
+
+  /* CHAT */
+  .chat-wrap { display: flex; flex-direction: column; height: 100%; }
+  .chat-area { flex: 1; overflow-y: auto; padding-bottom: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 220px; max-height: 340px; }
+  .msg { display: flex; gap: 10px; }
+  .msg.user { justify-content: flex-end; }
+  .bubble { padding: 10px 14px; border-radius: 14px; max-width: 88%; font-size: 13px; line-height: 1.55; }
+  .msg.ai .bubble { background: var(--surface2); border: 1px solid var(--border); border-radius: 14px 14px 14px 4px; }
+  .msg.user .bubble { background: var(--cyan); color: #000; border-radius: 14px 14px 4px 14px; font-weight: 500; }
+  .ai-avatar { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--cyan), #7c3aed); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #000; flex-shrink: 0; margin-top: 2px; }
+  .chat-input-row { display: flex; gap: 8px; margin-top: 12px; }
+  .chat-input { flex: 1; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 10px 14px; color: var(--text); font-family: var(--font); font-size: 13px; outline: none; }
+  .chat-input:focus { border-color: var(--cyan-mid); }
+  .chat-input::placeholder { color: var(--dim); }
+
+  /* LOADING */
+  .loading { display: none; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; padding: 10px 0; }
+  .loading.show { display: flex; }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--border2); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* MISC */
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+  .error-box { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: var(--red); margin-top: 10px; display: none; }
+  .info-box { padding: 12px 14px; background: var(--cyan-dim); border: 1px solid var(--cyan-mid); border-radius: 10px; font-size: 12px; color: var(--cyan); margin-top: 12px; }
+  .step-dots { display: flex; gap: 6px; margin-bottom: 20px; }
+  .dot { width: 6px; height: 6px; border-radius: 99px; background: var(--border2); }
+  .dot.on { width: 20px; background: var(--cyan); }
+  .dot.done { background: var(--cyan); }
+  .quick-btns { display: grid; gap: 8px; }
+  .quick-btn { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 13px; text-align: left; cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+  .quick-btn:hover { border-color: var(--border2); background: rgba(255,255,255,0.07); }
+
+  .ai-out p { margin-bottom: 8px; font-size: 13px; line-height: 1.6; color: var(--text); }
+  .ai-out strong { color: var(--cyan); font-weight: 500; }
+
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .two-col, .role-grid, .stat-row { grid-template-columns: 1fr; }
+    body, html { overflow: auto; }
+    .main { overflow: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="logo-area">
+      <div class="logo-mark">
+        <div class="logo-hex">L↗</div>
+        <div>
+          <div class="logo-text">Lattice</div>
+          <div class="logo-sub">Career Intelligence</div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-section">Navigate</div>
+    <div class="nav-item active" id="nav-home" onclick="go('home')"><span class="nav-icon">⬡</span> Start</div>
+    <div class="nav-item" id="nav-intake" onclick="go('intake')"><span class="nav-icon">↑</span> Your Profile</div>
+    <div class="nav-item" id="nav-rolemap" onclick="go('rolemap')"><span class="nav-icon">◈</span> Role Map</div>
+    <div class="nav-item" id="nav-jobs" onclick="go('jobs')"><span class="nav-icon">⌖</span> Open Jobs</div>
+    <div class="nav-item" id="nav-decoder" onclick="go('decoder')"><span class="nav-icon">⟐</span> Job Decoder</div>
+    <div class="nav-item" id="nav-plan" onclick="go('plan')"><span class="nav-icon">↗</span> Skill Plan</div>
+    <div class="nav-item" id="nav-coach" onclick="go('coach')"><span class="nav-icon">◎</span> AI Coach <span class="nav-badge">AI</span></div>
+    <div class="sidebar-footer">
+      <div class="user-pill">
+        <div class="user-avatar">JD</div>
+        <div><div class="user-name">Demo User</div><div class="user-plan">Beta access</div></div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="tb-title">Welcome to Lattice</div>
+        <div class="topbar-sub" id="tb-sub">AI career intelligence for the messy middle</div>
+      </div>
+      <div class="topbar-right">
+        <div class="chip hi">Beta</div>
+        <div class="chip">lattice.ai</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- HOME -->
+      <div class="screen active" id="screen-home">
+        <div class="two-col" style="margin-bottom:16px;">
+          <div class="hero-card">
+            <div class="h1">See the jobs you're <span class="accent">already closer to</span> than you realize.</div>
+            <p class="muted" style="margin-bottom:20px;">Lattice turns your real experience into a ranked, evidence-backed career move plan — even without a polished resume.</p>
+            <div class="btn-row" style="margin-top:0;">
+              <button class="btn btn-primary" onclick="go('intake');setMode('resume')">Upload resume</button>
+              <button class="btn btn-secondary" onclick="go('intake');setMode('noresume')">No resume? Start here</button>
+            </div>
+          </div>
+          <div class="hero-card">
+            <div class="card-label">What Lattice does</div>
+            <div class="card-inner" style="display:flex;gap:12px;align-items:flex-start;">
+              <span style="color:var(--cyan);font-size:17px;margin-top:1px;">◈</span>
+              <div><div style="font-size:13px;font-weight:500;margin-bottom:2px;">Adjacent-fit role map</div><div class="muted" style="font-size:12px;">Finds realistic next roles based on real capability, not just your job title.</div></div>
+            </div>
+            <div class="card-inner" style="display:flex;gap:12px;align-items:flex-start;">
+              <span style="color:var(--cyan);font-size:17px;margin-top:1px;">⟐</span>
+              <div><div style="font-size:13px;font-weight:500;margin-bottom:2px;">Job posting decoder</div><div class="muted" style="font-size:12px;">Translates vague job descriptions into what employers actually want.</div></div>
+            </div>
+            <div class="card-inner" style="display:flex;gap:12px;align-items:flex-start;">
+              <span style="color:var(--cyan);font-size:17px;margin-top:1px;">↗</span>
+              <div><div style="font-size:13px;font-weight:500;margin-bottom:2px;">Free-first skill plan</div><div class="muted" style="font-size:12px;">Ranked by ROI — close gaps without expensive bootcamps.</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="stat-row">
+          <div class="stat"><div class="stat-val">40.7%</div><div class="stat-label">of job seekers use AI — but not for the right decisions</div></div>
+          <div class="stat"><div class="stat-val">8.2×</div><div class="stat-label">larger talent pipeline with skills-based hiring approach</div></div>
+          <div class="stat"><div class="stat-val">12%</div><div class="stat-label">more likely to make a quality hire with skills-based search</div></div>
+        </div>
+      </div>
+
+      <!-- INTAKE -->
+      <div class="screen" id="screen-intake">
+        <div class="step-dots"><div class="dot done"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <div class="two-col">
+          <div class="card" style="margin-bottom:0;">
+            <div id="mode-resume">
+              <div class="card-label">Your Resume</div>
+              <div class="upload-zone" onclick="document.getElementById('file-in').click()">
+                <div class="upload-icon">↑</div>
+                <div style="font-size:13px;font-weight:500;margin-bottom:3px;">Upload your resume</div>
+                <div class="muted" style="font-size:12px;">PDF or Word · or paste below</div>
+                <input type="file" id="file-in" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="handleFile(this)">
+              </div>
+              <div style="text-align:center;color:var(--dim);font-size:12px;margin-bottom:10px;">— or paste your experience —</div>
+            </div>
+            <div id="mode-noresume" style="display:none;">
+              <div class="card-label">Describe What You've Done</div>
+              <p class="muted" style="font-size:12px;margin-bottom:12px;">No resume? Just tell us what you did at work in plain language.</p>
+            </div>
+            <textarea class="textarea" id="exp-text" rows="6" placeholder="e.g. I tracked inventory in Excel, ran weekly reports, helped fix shipping delays, trained new staff, and worked with our warehouse management system..."></textarea>
+            <div style="margin-top:14px;">
+              <div class="card-label">Your goals (optional)</div>
+              <textarea class="textarea" id="goals-text" rows="3" placeholder="Any roles, industries, salary range, or location preferences you want to explore?"></textarea>
+            </div>
+            <div class="error-box" id="intake-err">Please add some experience above before continuing.</div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="runAnalysis()">Analyze my profile →</button>
+              <button class="btn btn-ghost" onclick="go('home')">Back</button>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-label">Lattice will look for</div>
+            <div class="card-inner"><div style="font-size:13px;font-weight:500;margin-bottom:3px;">Tools & systems</div><div class="muted" style="font-size:12px;">Excel, Power BI, SAP, ERP, WMS, Salesforce — specifics matter</div></div>
+            <div class="card-inner"><div style="font-size:13px;font-weight:500;margin-bottom:3px;">Impact & scale</div><div class="muted" style="font-size:12px;">Orders handled, errors reduced, time saved, team size</div></div>
+            <div class="card-inner"><div style="font-size:13px;font-weight:500;margin-bottom:3px;">Hidden judgment calls</div><div class="muted" style="font-size:12px;">Decisions you made, problems solved, stakeholders worked with</div></div>
+            <div class="card-inner"><div style="font-size:13px;font-weight:500;margin-bottom:3px;">Transferable capabilities</div><div class="muted" style="font-size:12px;">Skills that cross industries — data, coordination, process, communication</div></div>
+            <div class="info-box">The more detail you share, the more accurate your role map will be.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROLE MAP -->
+      <div class="screen" id="screen-rolemap">
+        <div class="step-dots"><div class="dot done"></div><div class="dot done"></div><div class="dot on"></div><div class="dot"></div><div class="dot"></div></div>
+        <div class="loading" id="rm-load"><div class="spinner"></div> Analyzing your experience and mapping adjacent roles...</div>
+        <div id="rm-content">
+          <div class="two-col">
+            <div class="card" style="margin-bottom:0;">
+              <div class="card-label">Your capability profile</div>
+              <div id="cap-profile">
+                <div class="skill-row"><div class="skill-label"><span>Data & reporting</span><span>82%</span></div><div class="skill-bar"><div class="skill-fill sf-high" style="width:82%"></div></div></div>
+                <div class="skill-row"><div class="skill-label"><span>Operations & process</span><span>88%</span></div><div class="skill-bar"><div class="skill-fill sf-high" style="width:88%"></div></div></div>
+                <div class="skill-row"><div class="skill-label"><span>Systems & tools</span><span>71%</span></div><div class="skill-bar"><div class="skill-fill sf-mid" style="width:71%"></div></div></div>
+                <div class="skill-row"><div class="skill-label"><span>Stakeholder communication</span><span>65%</span></div><div class="skill-bar"><div class="skill-fill sf-mid" style="width:65%"></div></div></div>
+                <div class="skill-row"><div class="skill-label"><span>SQL & advanced analytics</span><span>28%</span></div><div class="skill-bar"><div class="skill-fill sf-low" style="width:28%"></div></div></div>
+              </div>
+              <div class="divider"></div>
+              <div class="card-label">Lattice's read</div>
+              <div class="ai-out" id="lattice-read"><p>Your experience shows <strong>strong operational intelligence</strong> — you understand how systems, people, and data connect. This maps well to analyst and operations roles that need someone who can do the work and explain it. Your main gap is SQL and formal requirements documentation, but these are learnable in weeks, not years.</p></div>
+            </div>
+            <div class="card" style="margin-bottom:0;">
+              <div class="card-label">Adjacent-fit role map</div>
+              <div class="role-grid" id="role-grid">
+                <div class="role-card top" onclick="go('jobs')"><div class="top-badge">TOP PICK</div><div class="role-match">84%</div><div class="role-title">Supply Chain Data Analyst</div><div class="match-bar"><div class="match-fill" style="width:84%"></div></div><div class="role-meta">Strong fit · 1 skill gap</div><div style="margin-top:7px;"><span class="tag green">Power BI</span><span class="tag green">Forecasting</span><span class="tag amber">SQL</span></div></div>
+                <div class="role-card" onclick="go('jobs')"><div class="role-match">82%</div><div class="role-title">Business Analyst</div><div class="match-bar"><div class="match-fill" style="width:82%"></div></div><div class="role-meta">Strong fit · 2 skill gaps</div><div style="margin-top:7px;"><span class="tag green">Process</span><span class="tag amber">Requirements</span><span class="tag amber">SQL</span></div></div>
+                <div class="role-card" onclick="go('jobs')"><div class="role-match">79%</div><div class="role-title">Operations Analyst</div><div class="match-bar"><div class="match-fill" style="width:79%"></div></div><div class="role-meta">Good fit · 1 skill gap</div><div style="margin-top:7px;"><span class="tag green">Ops</span><span class="tag green">Reporting</span><span class="tag amber">SQL</span></div></div>
+                <div class="role-card" onclick="go('jobs')"><div class="role-match">71%</div><div class="role-title">Logistics Coordinator</div><div class="match-bar"><div class="match-fill" style="width:71%"></div></div><div class="role-meta">Stretch · 3 skill gaps</div><div style="margin-top:7px;"><span class="tag green">Logistics</span><span class="tag red">Negotiation</span><span class="tag red">3PL</span></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="go('jobs')">See open jobs →</button>
+            <button class="btn btn-secondary" onclick="go('plan')">View skill plan</button>
+            <button class="btn btn-ghost" onclick="go('coach')">Ask AI coach</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- JOBS -->
+      <div class="screen" id="screen-jobs">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+            <div class="card-label" style="margin:0;">Real open opportunities</div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;">Near me</button>
+              <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;">Remote</button>
+              <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;">Hybrid</button>
+            </div>
+          </div>
+          <div class="job-item">
+            <div style="flex:1;">
+              <div class="job-title">Business Analyst</div>
+              <div class="job-co">Lockheed Martin · Endicott, NY · $68–82K</div>
+              <div><span class="tag green">Strong fit</span><span class="tag">Systems</span><span class="tag">Reporting</span><span class="tag">Process improvement</span></div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div class="job-fit">82%</div>
+              <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;margin-top:8px;" onclick="go('decoder')">Decode →</button>
+            </div>
+          </div>
+          <div class="job-item">
+            <div style="flex:1;">
+              <div class="job-title">Supply Chain Data Analyst</div>
+              <div class="job-co">BAE Systems · Remote · $72–90K</div>
+              <div><span class="tag green">Top pick</span><span class="tag">Power BI</span><span class="tag">Forecasting</span><span class="tag amber">SQL needed</span></div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div class="job-fit">84%</div>
+              <button class="btn btn-primary" style="font-size:12px;padding:6px 12px;margin-top:8px;" onclick="go('decoder')">Decode →</button>
+            </div>
+          </div>
+          <div class="job-item">
+            <div style="flex:1;">
+              <div class="job-title">Operations Analyst</div>
+              <div class="job-co">Binghamton University · Binghamton, NY · $58–72K</div>
+              <div><span class="tag green">Good fit</span><span class="tag">Coordination</span><span class="tag">Reporting</span></div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div class="job-fit">79%</div>
+              <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;margin-top:8px;" onclick="go('decoder')">Decode →</button>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:0;">
+          <button class="btn btn-primary" onclick="go('decoder')">Decode a job posting →</button>
+          <button class="btn btn-secondary" onclick="go('plan')">Build skill plan</button>
+        </div>
+      </div>
+
+      <!-- DECODER -->
+      <div class="screen" id="screen-decoder">
+        <div class="two-col">
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-label">Paste a job posting</div>
+            <textarea class="textarea" id="job-text" rows="10" placeholder="Paste any job description here — Lattice will decode what it really means, what matters most, and how you map to it..."></textarea>
+            <div class="error-box" id="dec-err">Paste a job posting above first.</div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="runDecoder()">Decode this job →</button>
+              <button class="btn btn-ghost" onclick="loadSample()">Load sample posting</button>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-label">Plain-English breakdown</div>
+            <div class="loading" id="dec-load"><div class="spinner"></div> Translating job posting...</div>
+            <div id="dec-result"><div style="color:var(--dim);font-size:13px;text-align:center;padding:50px 0;">Paste a job posting on the left →</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PLAN -->
+      <div class="screen" id="screen-plan">
+        <div class="two-col">
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-label">Free-first skill plan</div>
+            <p class="muted" style="font-size:12px;margin-bottom:16px;">Ranked by ROI — how much each skill unlocks vs. how long it takes to learn.</p>
+            <div class="skill-row">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><div style="font-size:13px;font-weight:500;">1. SQL fundamentals</div><span class="tag green">Highest ROI</span></div>
+              <div class="skill-bar"><div class="skill-fill sf-high" style="width:92%"></div></div>
+              <div class="muted" style="font-size:12px;margin-top:6px;">Unlocks 3 of your 4 top roles. Free on Mode Analytics, Khan Academy, SQLZoo. ~3 weeks part-time.</div>
+            </div>
+            <div class="divider"></div>
+            <div class="skill-row">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><div style="font-size:13px;font-weight:500;">2. Requirements documentation</div><span class="tag amber">Medium ROI</span></div>
+              <div class="skill-bar"><div class="skill-fill sf-mid" style="width:68%"></div></div>
+              <div class="muted" style="font-size:12px;margin-top:6px;">Proves business analyst readiness. Free templates on Confluence, Notion. ~1 week to build a sample doc.</div>
+            </div>
+            <div class="divider"></div>
+            <div class="skill-row">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><div style="font-size:13px;font-weight:500;">3. Portfolio project</div><span class="tag">Build it</span></div>
+              <div class="skill-bar"><div class="skill-fill sf-mid" style="width:55%"></div></div>
+              <div class="muted" style="font-size:12px;margin-top:6px;">Create a warehouse/inventory dashboard using public data. Use Power BI (already a strength).</div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-label">Resource library</div>
+            <div class="card-inner"><div style="font-size:13px;font-weight:500;margin-bottom:4px;">Free SQL course</div><div class="muted" style="font-size:12px;margin-bottom:7px;">Mode Analytics SQL School — beginner-friendly, job-targeted, free.</div><span class="tag green">Free</span><span class="tag">~3 weeks</span></div>
+            <div class="card-inner"><div style="font-size:13px;font-weight:500;margin-bottom:4px;">Business Analyst resume template</div><div class="muted" style="font-size:12px;margin-bottom:7px;">Role-specific, pre-optimized for ATS, with example bullet structures.</div><span class="tag green">Free</span><span class="tag">Download</span></div>
+            <div class="card-inner"><div style="font-size:13px;font-weight:500;margin-bottom:4px;">Interview proof bank</div><div class="muted" style="font-size:12px;margin-bottom:7px;">STAR-format story templates for operations, data, and process roles.</div><span class="tag green">Free</span><span class="tag">12 templates</span></div>
+            <div class="btn-row" style="margin-top:4px;">
+              <button class="btn btn-primary" onclick="go('coach')">Ask coach what to do first →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COACH -->
+      <div class="screen" id="screen-coach">
+        <div class="two-col">
+          <div class="card" style="margin-bottom:0;display:flex;flex-direction:column;">
+            <div class="card-label">AI Career Coach — powered by Claude</div>
+            <div class="chat-area" id="chat-area">
+              <div class="msg ai">
+                <div class="ai-avatar">L</div>
+                <div class="bubble">Hi! I'm your Lattice career coach. I've analyzed your profile and found strong operational and reporting capabilities that map well to analyst roles. What would you like to work on? I can help with role strategy, resume rewrites, interview prep, or what to do today.</div>
+              </div>
+            </div>
+            <div class="loading" id="coach-load"><div class="spinner"></div> Thinking...</div>
+            <div class="chat-input-row">
+              <input type="text" class="chat-input" id="coach-input" placeholder="Ask anything — why you match, what to learn, which job first..." onkeydown="if(event.key==='Enter')sendMsg()">
+              <button class="btn btn-primary" onclick="sendMsg()">Send</button>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:0;">
+            <div class="card-label">Quick questions</div>
+            <div class="quick-btns">
+              <button class="quick-btn" onclick="quickAsk('Am I actually qualified for Business Systems Analyst?')">Am I actually qualified for Business Systems Analyst?</button>
+              <button class="quick-btn" onclick="quickAsk('What should I do today to move my job search forward?')">What should I do today?</button>
+              <button class="quick-btn" onclick="quickAsk('Rewrite my top resume bullet for a data analyst role')">Rewrite my top resume bullet</button>
+              <button class="quick-btn" onclick="quickAsk('What is the single fastest skill gap I can close?')">Fastest skill gap to close?</button>
+              <button class="quick-btn" onclick="quickAsk('Give me a practice interview question and then coach me on my answer')">Practice interview question</button>
+            </div>
+            <div class="divider"></div>
+            <div class="card-label">Your modules</div>
+            <div class="role-grid">
+              <div class="card-inner" style="cursor:pointer;" onclick="go('rolemap')"><div style="font-size:12px;font-weight:500;">Role Map</div><div class="muted" style="font-size:11px;">4 roles found</div></div>
+              <div class="card-inner" style="cursor:pointer;" onclick="go('jobs')"><div style="font-size:12px;font-weight:500;">Open Jobs</div><div class="muted" style="font-size:11px;">3 matches</div></div>
+              <div class="card-inner" style="cursor:pointer;" onclick="go('decoder')"><div style="font-size:12px;font-weight:500;">Job Decoder</div><div class="muted" style="font-size:11px;">Ready</div></div>
+              <div class="card-inner" style="cursor:pointer;" onclick="go('plan')"><div style="font-size:12px;font-weight:500;">Skill Plan</div><div class="muted" style="font-size:11px;">3 priorities</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const SCREENS = {
+  home:    { title: 'Welcome to Lattice',       sub: 'AI career intelligence for the messy middle' },
+  intake:  { title: 'Build Your Profile',        sub: 'Step 1 — your experience' },
+  rolemap: { title: 'Your Role Map',             sub: 'Adjacent-fit analysis' },
+  jobs:    { title: 'Open Opportunities',        sub: 'Real jobs matched to your capabilities' },
+  decoder: { title: 'Job Posting Decoder',       sub: 'What does this job actually want?' },
+  plan:    { title: 'Free-First Skill Plan',     sub: 'Close your gaps, ranked by ROI' },
+  coach:   { title: 'AI Career Coach',           sub: 'Powered by Claude' }
+};
+
+let userProfile = '';
+let analysisRun = false;
+let chatHistory = [];
+
+function go(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  const nav = document.getElementById('nav-' + id);
+  if (nav) nav.classList.add('active');
+  const m = SCREENS[id];
+  document.getElementById('tb-title').textContent = m.title;
+  document.getElementById('tb-sub').textContent = m.sub;
+  document.querySelector('.content').scrollTop = 0;
+}
+
+function setMode(mode) {
+  document.getElementById('mode-resume').style.display = mode === 'resume' ? 'block' : 'none';
+  document.getElementById('mode-noresume').style.display = mode === 'noresume' ? 'block' : 'none';
+  document.getElementById('exp-text').placeholder = mode === 'noresume'
+    ? 'e.g. I tracked orders, helped customers, sent reports, scheduled shipments, and trained new staff...'
+    : 'e.g. I tracked inventory in Excel, ran weekly reports, helped fix shipping delays, trained new staff, and worked with our warehouse management system...';
+}
+
+function handleFile(input) {
+  if (input.files && input.files[0]) {
+    const zone = document.querySelector('.upload-zone');
+    zone.innerHTML = '<div class="upload-icon">✓</div><div style="font-size:13px;font-weight:500;color:var(--cyan);">' + input.files[0].name + ' loaded</div><div class="muted" style="font-size:12px;">Add any extra context below</div>';
+  }
+}
+
+async function runAnalysis() {
+  const exp = document.getElementById('exp-text').value.trim();
+  const goals = document.getElementById('goals-text').value.trim();
+  const err = document.getElementById('intake-err');
+  if (!exp) { err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  userProfile = exp;
+  go('rolemap');
+  if (!analysisRun) {
+    analysisRun = true;
+    await doRoleMap(exp, goals);
+  }
+}
+
+async function doRoleMap(exp, goals) {
+  const load = document.getElementById('rm-load');
+  const content = document.getElementById('rm-content');
+  load.classList.add('show');
+  content.style.visibility = 'hidden';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `You are Lattice, an AI career intelligence engine. Analyze this experience and return a JSON capability assessment.
+
+Experience: ${exp}
+Goals: ${goals || 'Not specified'}
+
+Return ONLY this JSON structure, no markdown:
+{
+  "skills": [
+    {"name": "Data & reporting", "score": 75},
+    {"name": "Operations & process", "score": 80},
+    {"name": "Systems & tools", "score": 60},
+    {"name": "Stakeholder communication", "score": 55},
+    {"name": "SQL & advanced analytics", "score": 20}
+  ],
+  "read": "2-3 sentence honest plain-English assessment of their capabilities and main gap",
+  "roles": [
+    {"title": "Role Name", "match": 82, "fit": "Strong fit", "gaps": 1, "tags": ["skill1", "skill2", "gap1"], "colors": ["green", "green", "amber"]},
+    {"title": "Role Name", "match": 76, "fit": "Good fit", "gaps": 2, "tags": ["skill1", "gap1"], "colors": ["green", "red"]}
+  ]
+}
+
+Generate 4 realistic adjacent roles based on the actual experience described. Adjust all scores to reflect what they actually wrote.`
+        }]
+      })
+    });
+    const data = await res.json();
+    const parsed = JSON.parse(data.content[0].text.replace(/\`\`\`json|\`\`\`/g,'').trim());
+    renderMap(parsed);
+  } catch(e) {
+    // fall through to default content
+  } finally {
+    load.classList.remove('show');
+    content.style.visibility = 'visible';
+  }
+}
+
+function renderMap(d) {
+  document.getElementById('cap-profile').innerHTML = d.skills.map(s => {
+    const p = Math.round(s.score);
+    const cls = p >= 70 ? 'sf-high' : p >= 45 ? 'sf-mid' : 'sf-low';
+    return `<div class="skill-row"><div class="skill-label"><span>${s.name}</span><span>${p}%</span></div><div class="skill-bar"><div class="skill-fill ${cls}" style="width:${p}%"></div></div></div>`;
+  }).join('');
+
+  document.getElementById('lattice-read').innerHTML = `<p>${d.read}</p>`;
+
+  const sorted = [...d.roles].sort((a,b) => b.match - a.match);
+  document.getElementById('role-grid').innerHTML = sorted.map((r, i) => {
+    const tags = (r.tags||[]).map((t,ti) => `<span class="tag ${(r.colors||[])[ti]||''}">${t}</span>`).join('');
+    return `<div class="role-card ${i===0?'top':''}" onclick="go('jobs')">
+      ${i===0?'<div class="top-badge">TOP PICK</div>':''}
+      <div class="role-match">${Math.round(r.match)}%</div>
+      <div class="role-title">${r.title}</div>
+      <div class="match-bar"><div class="match-fill" style="width:${r.match}%"></div></div>
+      <div class="role-meta">${r.fit} · ${r.gaps} skill gap${r.gaps!==1?'s':''}</div>
+      <div style="margin-top:7px;">${tags}</div>
+    </div>`;
+  }).join('');
+}
+
+function loadSample() {
+  document.getElementById('job-text').value = `Business Systems Analyst — Endicott, NY
+
+We are looking for a detail-oriented analyst to support cross-functional operations analytics, improve business processes, document system requirements, and partner with technical and operational teams.
+
+Responsibilities:
+- Analyze operational data and produce reports for leadership
+- Document business requirements for systems improvements  
+- Partner with IT to translate business needs into technical specs
+- Identify process bottlenecks and recommend improvements
+- Support ERP/WMS system administration and user training
+
+Requirements:
+- 2+ years in operations, logistics, or analytics
+- Proficiency in Excel; Power BI or Tableau a plus
+- SQL experience preferred
+- Strong communication skills
+- Experience with ERP or WMS systems preferred`;
+}
+
+async function runDecoder() {
+  const posting = document.getElementById('job-text').value.trim();
+  const err = document.getElementById('dec-err');
+  if (!posting) { err.style.display = 'block'; return; }
+  err.style.display = 'none';
+
+  const load = document.getElementById('dec-load');
+  const result = document.getElementById('dec-result');
+  load.classList.add('show');
+  result.innerHTML = '';
+
+  const profile = userProfile || 'Operations professional with Excel, inventory tracking, reporting, and warehouse management system experience.';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 800,
+        messages: [{
+          role: 'user',
+          content: `You are Lattice's job decoder. Analyze this job posting for this candidate.
+
+Job posting: ${posting}
+Candidate profile: ${profile}
+
+Return ONLY this JSON, no markdown:
+{
+  "what_it_means": "Plain English: what this job actually is in 2 sentences",
+  "what_matters": ["top priority", "second priority", "third priority"],
+  "strengths": ["their strength 1", "their strength 2", "their strength 3"],
+  "watch_outs": ["gap or concern 1", "gap or concern 2"],
+  "fit_score": 79,
+  "best_angle": "One sentence on how this person should position themselves"
+}`
+        }]
+      })
+    });
+    const data = await res.json();
+    const p = JSON.parse(data.content[0].text.replace(/\`\`\`json|\`\`\`/g,'').trim());
+
+    result.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <span class="muted" style="font-size:12px;">Fit estimate</span>
+        <span style="font-size:28px;font-weight:600;color:var(--cyan);font-family:var(--mono);">${Math.round(p.fit_score)}%</span>
+      </div>
+      <div class="card-inner"><div class="muted" style="font-size:11px;margin-bottom:4px;">What it really means</div><div style="font-size:13px;">${p.what_it_means}</div></div>
+      <div class="card-inner"><div class="muted" style="font-size:11px;margin-bottom:6px;">What actually matters</div>${(p.what_matters||[]).map((w,i)=>`<div style="font-size:13px;margin-bottom:4px;"><span style="color:var(--cyan);font-family:var(--mono);font-size:11px;margin-right:6px;">${i+1}.</span>${w}</div>`).join('')}</div>
+      <div class="card-inner"><div class="muted" style="font-size:11px;margin-bottom:6px;">Your strongest evidence</div>${(p.strengths||[]).map(s=>`<span class="tag green">${s}</span>`).join('')}</div>
+      <div class="card-inner"><div class="muted" style="font-size:11px;margin-bottom:6px;">Watch-outs</div>${(p.watch_outs||[]).map(w=>`<span class="tag amber">${w}</span>`).join('')}</div>
+      <div class="info-box"><strong>Best angle:</strong> ${p.best_angle}</div>
+      <div class="btn-row"><button class="btn btn-primary" onclick="go('plan')">Build skill plan →</button><button class="btn btn-secondary" onclick="go('coach')">Ask coach</button></div>
+    `;
+  } catch(e) {
+    result.innerHTML = '<div style="color:var(--red);font-size:13px;">Something went wrong — try again.</div>';
+  } finally {
+    load.classList.remove('show');
+  }
+}
+
+async function sendMsg() {
+  const input = document.getElementById('coach-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  addMsg('user', msg);
+  chatHistory.push({ role: 'user', content: msg });
+  await callCoach();
+}
+
+function quickAsk(msg) {
+  document.getElementById('coach-input').value = msg;
+  sendMsg();
+}
+
+function addMsg(role, text) {
+  const area = document.getElementById('chat-area');
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
+  div.innerHTML = role === 'ai'
+    ? `<div class="ai-avatar">L</div><div class="bubble">${text}</div>`
+    : `<div class="bubble">${text}</div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+async function callCoach() {
+  const load = document.getElementById('coach-load');
+  load.classList.add('show');
+  const profile = userProfile || 'Operations professional with Excel, inventory tracking, reporting, and warehouse management system experience looking to move into analyst roles.';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        system: `You are Lattice's AI career coach. Direct, specific, actionable — not generic. User profile: ${profile}. Top role matches: Supply Chain Data Analyst (84%), Business Analyst (82%), Operations Analyst (79%). Main gap: SQL. Be like a smart friend who knows hiring, not a corporate counselor. Keep responses to 3-4 sentences max.`,
+        messages: chatHistory
+      })
+    });
+    const data = await res.json();
+    const reply = data.content[0].text;
+    chatHistory.push({ role: 'assistant', content: reply });
+    addMsg('ai', reply);
+  } catch(e) {
+    addMsg('ai', 'Hit an error — try asking again.');
+  } finally {
+    load.classList.remove('show');
+  }
+}
+</script>
+</body>
+</html>
