@@ -1,0 +1,813 @@
+/**
+ * LATTICE AI BACKEND STARTER
+ *
+ * What this does:
+ * - Keeps your Claude API key safely on the backend
+ * - Creates an AI router so Lattice can use Claude now
+ * - Lets you later route tasks to your own hosted model
+ * - Includes endpoints for:
+ *   - resume/work-history skill extraction
+ *   - job posting breakdown
+ *   - resume-to-job match scoring
+ *   - follow-up questions for users with thin resumes
+ *   - career coach chatbot
+ *
+ * Install:
+ * npm init -y
+ * npm install express cors dotenv @anthropic-ai/sdk zod
+ * npm install -D typescript ts-node @types/node @types/express @types/cors
+ *
+ * Add to package.json:
+ * "scripts": {
+ *   "dev": "ts-node server.ts"
+ * }
+ *
+ * Create .env:
+ * PORT=4000
+ * ANTHROPIC_API_KEY=your_claude_key_here
+ *
+ * Optional later for your own model:
+ * LOCAL_MODEL_BASE_URL=http://localhost:8000/v1
+ * LOCAL_MODEL_API_KEY=not-needed-or-your-key
+ * LOCAL_MODEL_NAME=meta-llama/Llama-3.1-8B-Instruct
+ *
+ * Run:
+ * npm run dev
+ */
+
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
+
+dotenv.config();
+
+const app = express();
+
+app.use(cors());
+app.use(express.json({ limit: "10mb" }));
+
+const PORT = process.env.PORT || 4000;
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+/**
+ * -----------------------------
+ * TYPES
+ * -----------------------------
+ */
+
+type AIProvider = "claude" | "local";
+
+type AITask =
+  | "extract_skills"
+  | "job_breakdown"
+  | "match_score"
+  | "followup_questions"
+  | "career_coach"
+  | "resume_rewrite";
+
+type AIMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
+
+type AIRequest = {
+  task: AITask;
+  provider?: AIProvider;
+  messages: AIMessage[];
+  temperature?: number;
+  maxTokens?: number;
+};
+
+type AIResponse = {
+  provider: AIProvider;
+  task: AITask;
+  text: string;
+};
+
+/**
+ * -----------------------------
+ * TASK ROUTING
+ * -----------------------------
+ *
+ * This is the important long-term architecture.
+ *
+ * Today:
+ * - everything can go to Claude.
+ *
+ * Later:
+ * - cheaper repetitive tasks can go to your own model.
+ * - complex coaching can stay on Claude.
+ */
+
+const defaultProviderByTask: Record<AITask, AIProvider> = {
+  extract_skills: "claude",
+  job_breakdown: "claude",
+  match_score: "claude",
+  followup_questions: "claude",
+  career_coach: "claude",
+  resume_rewrite: "claude",
+};
+
+/**
+ * Later, when your local model is good enough, you could change it to:
+ *
+ * extract_skills: "local"
+ * job_breakdown: "local"
+ * match_score: "local"
+ * followup_questions: "local"
+ *
+ * And maybe keep:
+ * career_coach: "claude"
+ * resume_rewrite: "claude"
+ */
+
+/**
+ * -----------------------------
+ * AI ROUTER
+ * -----------------------------
+ */
+
+async function runAI(request: AIRequest): Promise<AIResponse> {
+  const provider = request.provider || defaultProviderByTask[request.task];
+
+  if (provider === "claude") {
+    const text = await callClaude(request);
+    return {
+      provider,
+      task: request.task,
+      text,
+    };
+  }
+
+  if (provider === "local") {
+    const text = await callLocalOpenAICompatibleModel(request);
+    return {
+      provider,
+      task: request.task,
+      text,
+    };
+  }
+
+  throw new Error(`Unsupported provider: ${provider}`);
+}
+
+/**
+ * -----------------------------
+ * CLAUDE PROVIDER
+ * -----------------------------
+ */
+
+async function callClaude(request: AIRequest): Promise<string> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("Missing ANTHROPIC_API_KEY in .env");
+  }
+
+  const systemMessage =
+    request.messages.find((m) => m.role === "system")?.content ||
+    "You are Lattice, an intelligent career navigation assistant.";
+
+  const conversationMessages = request.messages
+    .filter((m) => m.role !== "system")
+    .map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
+
+  const response = await anthropic.messages.create({
+    model: "claude-3-5-sonnet-latest",
+    max_tokens: request.maxTokens || 1200,
+    temperature: request.temperature ?? 0.3,
+    system: systemMessage,
+    messages: conversationMessages,
+  });
+
+  const firstBlock = response.content[0];
+
+  if (!firstBlock || firstBlock.type !== "text") {
+    return "";
+  }
+
+  return firstBlock.text;
+}
+
+/**
+ * -----------------------------
+ * LOCAL / OWN MODEL PROVIDER
+ * -----------------------------
+ *
+ * This works with any OpenAI-compatible model server.
+ *
+ * Examples:
+ * - vLLM
+ * - Ollama with OpenAI compatibility
+ * - LM Studio
+ * - RunPod
+ * - Together
+ * - Fireworks
+ * - Anyscale
+ *
+ * Later, you can point LOCAL_MODEL_BASE_URL at your own GPU server.
+ */
+
+async function callLocalOpenAICompatibleModel(request: AIRequest): Promise<string> {
+  const baseUrl = process.env.LOCAL_MODEL_BASE_URL;
+  const modelName = process.env.LOCAL_MODEL_NAME;
+  const apiKey = process.env.LOCAL_MODEL_API_KEY || "not-needed";
+
+  if (!baseUrl || !modelName) {
+    throw new Error(
+      "Missing LOCAL_MODEL_BASE_URL or LOCAL_MODEL_NAME in .env"
+    );
+  }
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: modelName,
+      messages: request.messages,
+      temperature: request.temperature ?? 0.2,
+      max_tokens: request.maxTokens || 1200,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Local model error: ${errorText}`);
+  }
+
+  const data: any = await response.json();
+  return data.choices?.[0]?.message?.content || "";
+}
+
+/**
+ * -----------------------------
+ * PROMPT HELPERS
+ * -----------------------------
+ */
+
+function latticeSystemPrompt() {
+  return `
+You are Lattice, a career navigation platform.
+
+Your job is to help users translate real work experience into:
+- skills
+- job matches
+- career paths
+- resume bullets
+- interview preparation
+- upskilling plans
+- explanations of what jobs are really asking for
+
+Tone:
+- clear
+- practical
+- encouraging
+- not fake or inflated
+- do not invent experience the user did not provide
+
+Rules:
+- When information is missing, ask targeted follow-up questions.
+- Prefer plain English over jargon.
+- Explain why a role matches or does not match.
+- Distinguish between proven skills, likely skills, and missing skills.
+- When producing JSON, produce valid JSON only.
+`;
+}
+
+function jsonOnlyInstruction() {
+  return `
+Return valid JSON only.
+No markdown.
+No commentary.
+No code fences.
+`;
+}
+
+/**
+ * -----------------------------
+ * VALIDATION SCHEMAS
+ * -----------------------------
+ */
+
+const ExtractSkillsSchema = z.object({
+  workHistoryText: z.string().min(1),
+});
+
+const JobBreakdownSchema = z.object({
+  jobPostingText: z.string().min(1),
+});
+
+const MatchScoreSchema = z.object({
+  resumeText: z.string().min(1),
+  jobPostingText: z.string().min(1),
+});
+
+const FollowupQuestionsSchema = z.object({
+  userInput: z.string().min(1),
+});
+
+const CareerCoachSchema = z.object({
+  userProfile: z
+    .object({
+      currentRole: z.string().optional(),
+      targetRole: z.string().optional(),
+      location: z.string().optional(),
+      salaryGoal: z.string().optional(),
+      education: z.string().optional(),
+      constraints: z.string().optional(),
+    })
+    .optional(),
+  message: z.string().min(1),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string(),
+      })
+    )
+    .optional(),
+});
+
+const ResumeRewriteSchema = z.object({
+  originalBulletOrExperience: z.string().min(1),
+  targetJobText: z.string().optional(),
+});
+
+/**
+ * -----------------------------
+ * ROUTES
+ * -----------------------------
+ */
+
+app.get("/", (_req, res) => {
+  res.json({
+    app: "Lattice AI Backend",
+    status: "running",
+    endpoints: [
+      "POST /api/extract-skills",
+      "POST /api/job-breakdown",
+      "POST /api/match-score",
+      "POST /api/followup-questions",
+      "POST /api/career-coach",
+      "POST /api/rewrite-resume-bullet",
+      "POST /api/raw-ai",
+    ],
+  });
+});
+
+/**
+ * Extract skills from messy work history.
+ *
+ * Example input:
+ * {
+ *   "workHistoryText": "I track inventory in Excel, SAP, and Power BI..."
+ * }
+ */
+
+app.post("/api/extract-skills", async (req, res) => {
+  try {
+    const { workHistoryText } = ExtractSkillsSchema.parse(req.body);
+
+    const response = await runAI({
+      task: "extract_skills",
+      messages: [
+        {
+          role: "system",
+          content: latticeSystemPrompt() + jsonOnlyInstruction(),
+        },
+        {
+          role: "user",
+          content: `
+Extract structured career data from this user's work history.
+
+Work history:
+${workHistoryText}
+
+Return JSON with this shape:
+
+{
+  "provenSkills": [
+    {
+      "skill": "",
+      "evidence": "",
+      "category": "technical | operations | communication | leadership | analytics | industry | other",
+      "confidence": "high | medium | low"
+    }
+  ],
+  "likelySkillsToVerify": [
+    {
+      "skill": "",
+      "whyLikely": "",
+      "questionToConfirm": ""
+    }
+  ],
+  "toolsAndSystems": [],
+  "businessFunctions": [],
+  "strongResumeAngles": [],
+  "missingDetailsToAsk": [],
+  "possibleTargetRoles": [
+    {
+      "role": "",
+      "why": "",
+      "readiness": "strong | moderate | stretch"
+    }
+  ]
+}
+`,
+        },
+      ],
+      temperature: 0.1,
+      maxTokens: 1600,
+    });
+
+    res.json(response);
+  } catch (error: any) {
+    res.status(400).json({
+      error: error.message || "Failed to extract skills",
+    });
+  }
+});
+
+/**
+ * Break down a job posting into plain English.
+ */
+
+app.post("/api/job-breakdown", async (req, res) => {
+  try {
+    const { jobPostingText } = JobBreakdownSchema.parse(req.body);
+
+    const response = await runAI({
+      task: "job_breakdown",
+      messages: [
+        {
+          role: "system",
+          content: latticeSystemPrompt() + jsonOnlyInstruction(),
+        },
+        {
+          role: "user",
+          content: `
+Analyze this job posting.
+
+Job posting:
+${jobPostingText}
+
+Return JSON with this shape:
+
+{
+  "plainEnglishSummary": "",
+  "whatTheyActuallyNeed": [],
+  "mustHaveSkills": [],
+  "niceToHaveSkills": [],
+  "toolsMentioned": [],
+  "hiddenSignals": [],
+  "seniorityLevel": "entry | mid | senior | manager | director | unclear",
+  "likelyDayToDayWork": [],
+  "resumeKeywords": [],
+  "interviewThemes": [],
+  "redFlagsOrAmbiguities": [],
+  "bestCandidateProfile": ""
+}
+`,
+        },
+      ],
+      temperature: 0.1,
+      maxTokens: 1600,
+    });
+
+    res.json(response);
+  } catch (error: any) {
+    res.status(400).json({
+      error: error.message || "Failed to break down job",
+    });
+  }
+});
+
+/**
+ * Match a resume/work history to a job posting.
+ */
+
+app.post("/api/match-score", async (req, res) => {
+  try {
+    const { resumeText, jobPostingText } = MatchScoreSchema.parse(req.body);
+
+    const response = await runAI({
+      task: "match_score",
+      messages: [
+        {
+          role: "system",
+          content: latticeSystemPrompt() + jsonOnlyInstruction(),
+        },
+        {
+          role: "user",
+          content: `
+Compare this user profile/resume against this job posting.
+
+Resume or work history:
+${resumeText}
+
+Job posting:
+${jobPostingText}
+
+Return JSON with this shape:
+
+{
+  "overallMatchScore": 0,
+  "matchLevel": "weak | possible | good | strong | excellent",
+  "whyThisScore": "",
+  "strongMatches": [
+    {
+      "requirement": "",
+      "userEvidence": ""
+    }
+  ],
+  "partialMatches": [
+    {
+      "requirement": "",
+      "userEvidence": "",
+      "howToStrengthen": ""
+    }
+  ],
+  "gaps": [
+    {
+      "missingRequirement": "",
+      "severity": "low | medium | high",
+      "howToAddress": ""
+    }
+  ],
+  "resumeFixes": [],
+  "suggestedResumeHeadline": "",
+  "suggestedPositioning": "",
+  "applicationRecommendation": "apply now | apply after resume edits | stretch role | not recommended",
+  "interviewPrepQuestions": []
+}
+
+The score should be 0 to 100.
+Do not flatter the user.
+Be honest but constructive.
+`,
+        },
+      ],
+      temperature: 0.1,
+      maxTokens: 1800,
+    });
+
+    res.json(response);
+  } catch (error: any) {
+    res.status(400).json({
+      error: error.message || "Failed to score match",
+    });
+  }
+});
+
+/**
+ * Generate intelligent follow-up questions.
+ *
+ * This is useful when someone types:
+ * "Excel, order tracking, warehouse stuff"
+ *
+ * Lattice should not just say "great!"
+ * It should ask:
+ * - What did you use Excel for?
+ * - Did you use formulas?
+ * - Did you track orders in SAP?
+ * - Did you report delays?
+ */
+
+app.post("/api/followup-questions", async (req, res) => {
+  try {
+    const { userInput } = FollowupQuestionsSchema.parse(req.body);
+
+    const response = await runAI({
+      task: "followup_questions",
+      messages: [
+        {
+          role: "system",
+          content: latticeSystemPrompt() + jsonOnlyInstruction(),
+        },
+        {
+          role: "user",
+          content: `
+The user entered a short or incomplete work-history statement.
+
+User input:
+${userInput}
+
+Generate smart follow-up questions that help turn this into a stronger career profile.
+
+Return JSON with this shape:
+
+{
+  "detectedTopics": [],
+  "followupQuestions": [
+    {
+      "question": "",
+      "whyItMatters": "",
+      "answerType": "short text | yes/no | multiple choice | number | date | tool name"
+    }
+  ],
+  "suggestedMultipleChoiceOptions": [
+    {
+      "question": "",
+      "options": []
+    }
+  ],
+  "resumePotential": []
+}
+
+Ask practical questions.
+Do not overwhelm the user.
+Prioritize the top 5 to 8 questions.
+`,
+        },
+      ],
+      temperature: 0.2,
+      maxTokens: 1400,
+    });
+
+    res.json(response);
+  } catch (error: any) {
+    res.status(400).json({
+      error: error.message || "Failed to generate follow-up questions",
+    });
+  }
+});
+
+/**
+ * Career coach chatbot.
+ */
+
+app.post("/api/career-coach", async (req, res) => {
+  try {
+    const { userProfile, message, history } = CareerCoachSchema.parse(req.body);
+
+    const profileText = userProfile
+      ? `
+User profile:
+${JSON.stringify(userProfile, null, 2)}
+`
+      : "No user profile provided.";
+
+    const messages: AIMessage[] = [
+      {
+        role: "system",
+        content: latticeSystemPrompt(),
+      },
+      ...(history || []).map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+      {
+        role: "user",
+        content: `
+${profileText}
+
+User message:
+${message}
+`,
+      },
+    ];
+
+    const response = await runAI({
+      task: "career_coach",
+      messages,
+      temperature: 0.4,
+      maxTokens: 1400,
+    });
+
+    res.json(response);
+  } catch (error: any) {
+    res.status(400).json({
+      error: error.message || "Failed to run career coach",
+    });
+  }
+});
+
+/**
+ * Rewrite resume bullet.
+ */
+
+app.post("/api/rewrite-resume-bullet", async (req, res) => {
+  try {
+    const { originalBulletOrExperience, targetJobText } =
+      ResumeRewriteSchema.parse(req.body);
+
+    const response = await runAI({
+      task: "resume_rewrite",
+      messages: [
+        {
+          role: "system",
+          content: latticeSystemPrompt(),
+        },
+        {
+          role: "user",
+          content: `
+Rewrite this experience into strong resume bullets.
+
+Original experience:
+${originalBulletOrExperience}
+
+${
+  targetJobText
+    ? `Target job posting:
+${targetJobText}`
+    : "No target job posting provided."
+}
+
+Rules:
+- Do not invent facts.
+- Make the bullet stronger and clearer.
+- Use business impact language.
+- If metrics are missing, include a version with placeholders.
+-cache: uaed for releat queations and regular paraing od daya from resumes do not use rhis for complex thinging tasks 
+- Provide 3 versions:
+  1. conservative
+  2. stronger
+  3. strongest with metric placeholders
+`,
+        },
+      ],
+      temperature: 0.3,
+      maxTokens: 1000,
+    });
+
+    res.json(response);
+  } catch (error: any) {
+    res.status(400).json({
+      error: error.message || "Failed to rewrite resume bullet",
+    });
+  }
+});
+
+/**
+ * Raw AI route for testing.
+ *
+ * Do not expose this publicly in production unless protected.
+ */
+
+app.post("/api/raw-ai", async (req, res) => {
+  try {
+    const schema = z.object({
+      task: z.enum([
+        "extract_skills",
+        "job_breakdown",
+        "match_score",
+        "followup_questions",
+        "career_coach",
+        "resume_rewrite",
+      ]),
+      provider: z.enum(["claude", "local"]).optional(),
+      messages: z.array(
+        z.object({
+          role: z.enum(["system", "user", "assistant"]),
+          content: z.string(),
+        })
+      ),
+      temperature: z.number().optional(),
+      maxTokens: z.number().optional(),
+    });
+
+    const parsed = schema.parse(req.body);
+
+    const response = await runAI(parsed);
+
+    res.json(response);
+  } catch (error: any) {
+    res.status(400).json({
+      error: error.message || "Failed raw AI request",
+    });
+  }
+});
+*** cache*** 
+res.japn all values x.delim.peof 
+/**
+ * -----------------------------
+ * BASIC ERROR HANDLING
+ * -----------------------------
+ */
+
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(err);
+
+  res.status(500).json({
+    error: "Internal server error",
+  });
+});
+
+/**
+ * -----------------------------
+ * START SERVER
+ * -----------------------------
+ */
+
+app.listen(PORT, () => {
+  console.log(`Lattice AI backend running on http://localhost:${PORT}`);
+});
